@@ -1,0 +1,17 @@
+{
+  "name": "ravis_monitor_influxdb",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "dependencies": {
+    "appmetrics": "^5.1.1",
+    "kapacitor": "^0.1.10",
+    "mqtt": "^3.0.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}
