@@ -10,15 +10,19 @@ const env = new RavisMonitorInfluxDB({
 
 //insert executionsRavis,client=BlazeMeter,proyect=BlazeMeter,scene=Booking_flow pid="23343",result="0",state="start",type="test"
 
-const add = RavisMonitorInfluxDB.ACTIONS.add
-const measurement = RavisMonitorInfluxDB.SCOPES.executionsRavis
-env.createEnvironment(add, measurement, true)
-    .then(result => {
-        console.log(result)
+env.verifyInfluxConnection()
+    .then(status => {
+        const add = RavisMonitorInfluxDB.ACTIONS.add
+        const measurement = RavisMonitorInfluxDB.SCOPES.executionsRavis
+        env.createEnvironment(add, measurement, true)
+            .then(result => {
+                console.log(result)
+            })
+            .catch(err => {
+                throw err
+            })
+        env.listen(RavisMonitorInfluxDB.SCOPES.executionsRavis)
     })
     .catch(err => {
         throw err
     })
-
-env.listen(RavisMonitorInfluxDB.SCOPES.executionsRavis)
-// env.insertTest()

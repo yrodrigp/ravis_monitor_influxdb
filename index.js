@@ -3,7 +3,7 @@
 // const AppMetrics = require("appmetrics")
 const Kapacitor = require("kapacitor").Kapacitor
 const MQTT = require("mqtt")
-const Infux = require("inf")
+const Influx = require("influx")
 const SCOPES = Object.freeze({
     "executionsRavis": "executionsRavis"
 })
@@ -19,10 +19,29 @@ function RavisMonitorInfluxDB({host, port, username, password, database, callbac
     const cnx = `http://${username}:${password}@${host}:${port}/`
     console.log("connecting to", cnx)
     const kapacitor = new Kapacitor(cnx)
-    const clientMQTT  = MQTT.connect("mqtt://" + host)
     const taskID = "RavisTaskGetInfo"
 
+    this.verifyInfluxConnection = function () {
+        const influx = new Influx.InfluxDB({
+            host,
+            database,
+            // schema: [{
+            //     measurement: 'response_times',
+            //     fields: {
+            //       path: Influx.FieldType.STRING,
+            //       duration: Influx.FieldType.INTEGER
+            //     },
+            //     tags: [
+            //       'host'
+            //     ]
+            //   }
+            // ]
+           })
+        return influx.ping(5000)
+    }
+
     function deleteTask(scope) {
+        console.log("deleting task")
         return kapacitor.removeTask(taskID)
     }
 
@@ -32,10 +51,11 @@ function RavisMonitorInfluxDB({host, port, username, password, database, callbac
         } 
         var script = `stream\n    |from()\n        .measurement('${scope}')\n`
         script += `    |alert()\n`
-        script += `        .message('{{ .Time }}: CPU usage over 90%')`
+        script += `        .message('{{ .scene }}: CPU usage over 90%')`
         script += `        .mqtt('${scope}')`
         script += `          .brokerName('localhost')`
-        script += `          .qos(0)`
+        script += `          .qos(1)`
+        console.log("ccreating task")
         const response = await kapacitor.createTask({
             id: taskID,
             type: "stream",
@@ -108,6 +128,7 @@ function RavisMonitorInfluxDB({host, port, username, password, database, callbac
     }
 
     this.listen = function (scope) {
+        const clientMQTT  = MQTT.connect("mqtt://" + host)
         clientMQTT.on("connect", function () {
             clientMQTT.subscribe("#", function (err) {
                 if (!err) {
