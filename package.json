@@ -5,6 +5,7 @@
   "main": "index.js",
   "dependencies": {
     "appmetrics": "^5.1.1",
+    "influx": "^5.5.1",
     "kapacitor": "^0.1.10",
     "mqtt": "^3.0.0"
   },

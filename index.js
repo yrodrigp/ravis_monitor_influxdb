@@ -3,8 +3,9 @@
 // const AppMetrics = require("appmetrics")
 const Kapacitor = require("kapacitor").Kapacitor
 const MQTT = require("mqtt")
+const Infux = require("inf")
 const SCOPES = Object.freeze({
-    "requestsRaw": "requestsRaw"
+    "executionsRavis": "executionsRavis"
 })
 
 const ACTIONS = Object.freeze({
@@ -21,12 +22,21 @@ function RavisMonitorInfluxDB({host, port, username, password, database, callbac
     const clientMQTT  = MQTT.connect("mqtt://" + host)
     const taskID = "RavisTaskGetInfo"
 
-    function createTask(scope) {
+    function deleteTask(scope) {
+        return kapacitor.removeTask(taskID)
+    }
+
+    async function createTask(scope, reset = false) {
+        if (reset === true) {
+            await deleteTask(scope)
+        } 
         var script = `stream\n    |from()\n        .measurement('${scope}')\n`
         script += `    |alert()\n`
         script += `        .message('{{ .Time }}: CPU usage over 90%')`
-        script += `        .mqtt('alerts')`
-        return kapacitor.createTask({
+        script += `        .mqtt('${scope}')`
+        script += `          .brokerName('localhost')`
+        script += `          .qos(0)`
+        const response = await kapacitor.createTask({
             id: taskID,
             type: "stream",
             dbrps: [{ db: database, rp: "autogen" }],
@@ -39,20 +49,21 @@ function RavisMonitorInfluxDB({host, port, username, password, database, callbac
             //     }
             // }
           })
+        return response
     }
 
-    this.createEnvironment = async function (action, scope) {
+    this.createEnvironment = async function (action, scope, reset = false) {
         if (!action) throw "Action is required."
-        const tasks = await kapacitor.getTasks()
-        console.log("tasks got", tasks)
-        const env = tasks.tasks.find(i => i.id === taskID)
+        // const tasks = await kapacitor.getTasks()
+        // console.log("tasks got", tasks)
+        // const env = tasks.tasks.find(i => i.id === taskID)
         switch (action) {
             case ACTIONS.add:
                 if (!scope) throw "Scope is required."
-                if (!env) {
-                    const result = await createTask(scope)
+                // if (!env) {
+                    const result = await createTask(scope, reset)
                     return result
-                } 
+                // } 
                 break
             case ACTIONS.delete:
                 await kapacitor.removeTask(taskID)
@@ -76,17 +87,39 @@ function RavisMonitorInfluxDB({host, port, username, password, database, callbac
         })
     }
 
-    this.listen = function () {
+    this.insertTest = function() {
+        setInterval(() => 
+            influx.writePoints([{
+                measurement: SCOPES.executionsRavis,
+                tags: { host: os.hostname() },
+                fields: { duration, path: req.path },
+                }])
+                .then(() => {
+                    const query = `
+                        select * from response_times
+                        where host = ${Influx.escape.stringLit(os.hostname())}
+                        order by time desc
+                        limit 10
+                    `
+                    return influx.query(query)
+                }).then(rows => {
+                    rows.forEach(row => console.log(`A request to ${row.path} took ${row.duration}ms`))
+                }), 5000)
+    }
+
+    this.listen = function (scope) {
         clientMQTT.on("connect", function () {
-            clientMQTT.subscribe(taskID, function (err) {
+            clientMQTT.subscribe("#", function (err) {
                 if (!err) {
                     // clientMQTT.publish('presence', 'Hello mqtt')
-                }
+                    console.log("Subscribing to", scope)
+                } else throw err
             })
         })
         
         clientMQTT.on("message", function (topic, message) {
             // message is Buffer
+            if (topic !== scope) return
             console.log(topic, message.toString())
             clientMQTT.end()
         })
