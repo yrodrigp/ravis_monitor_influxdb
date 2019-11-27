@@ -14,7 +14,9 @@ env.verifyInfluxConnection()
     .then(status => {
         const add = RavisMonitorInfluxDB.ACTIONS.add
         const measurement = RavisMonitorInfluxDB.SCOPES.executionsRavis
-        env.createEnvironment(add, measurement, true)
+        const reset = true
+
+        env.createEnvironment(add, measurement, reset)
             .then(result => {
                 console.log(result)
             })

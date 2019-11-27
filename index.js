@@ -40,34 +40,41 @@ function RavisMonitorInfluxDB({host, port, username, password, database, callbac
         return influx.ping(5000)
     }
 
-    function deleteTask(scope) {
+    function deleteTask() {
         console.log("deleting task")
         return kapacitor.removeTask(taskID)
     }
 
     async function createTask(scope, reset = false) {
         if (reset === true) {
-            await deleteTask(scope)
+            await deleteTask()
         } 
-        var script = `stream\n    |from()\n        .measurement('${scope}')\n`
+
+        var script = `stream\n`
+        script += `    |from()\n`
+        script += `        .measurement('${scope}')\n`
         script += `    |alert()\n`
-        script += `        .message('{{ .scene }}: CPU usage over 90%')`
-        script += `        .mqtt('${scope}')`
-        script += `          .brokerName('localhost')`
-        script += `          .qos(1)`
-        console.log("ccreating task")
+        script += `        .message('CPU usage over 90%')\n`
+        script += `        .mqtt('alerts')\n`
+        script += `          .brokerName('localhost')\n`
+        script += `          .qos(1)\n`
+        // script += `          .retained()\n`.trim()
+
+        // var script = `stream\n`
+        // script += `    |from()\n`
+        // script += `        .measurement('${scope}')\n`
+        // script += `    |alert()\n`
+        // script += `        .crit(lambda: "client" == 'BlazeMeter')\n`
+        // script += `        .message('CPU usage over 90%')\n`
+        // script += `        .topic('${scope}')\n`
+
+        console.log("creating task", script)
         const response = await kapacitor.createTask({
             id: taskID,
             type: "stream",
             dbrps: [{ db: database, rp: "autogen" }],
             script,
             status: "enabled",
-            // vars: {
-            //     var1: {
-            //         value: 42,
-            //         type: VarType.Float
-            //     }
-            // }
           })
         return response
     }
@@ -132,7 +139,7 @@ function RavisMonitorInfluxDB({host, port, username, password, database, callbac
         clientMQTT.on("connect", function () {
             clientMQTT.subscribe("#", function (err) {
                 if (!err) {
-                    // clientMQTT.publish('presence', 'Hello mqtt')
+                    clientMQTT.publish('executionsRavis', 'Testing')
                     console.log("Subscribing to", scope)
                 } else throw err
             })
@@ -140,9 +147,9 @@ function RavisMonitorInfluxDB({host, port, username, password, database, callbac
         
         clientMQTT.on("message", function (topic, message) {
             // message is Buffer
-            if (topic !== scope) return
+            // if (topic !== scope) return
             console.log(topic, message.toString())
-            clientMQTT.end()
+            // clientMQTT.end()
         })
 
         clientMQTT.on("close", function(){
