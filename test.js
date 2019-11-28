@@ -10,8 +10,6 @@ const env = new RavisMonitorInfluxDB({
 
 //insert executionsRavis,client=BlazeMeter,proyect=BlazeMeter,scene=Booking_flow pid="23343",result="0",state="start",type="test"
 
-console.log("starting")
-
 env.verifyInfluxConnection()
     .then(status => {
         const add = RavisMonitorInfluxDB.ACTIONS.add

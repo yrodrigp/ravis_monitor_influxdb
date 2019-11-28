@@ -53,12 +53,15 @@ function RavisMonitorInfluxDB({host, port, username, password, database, callbac
         var script = `stream\n`
         script += `    |from()\n`
         script += `        .measurement('${scope}')\n`
+        // script += `    |window()\n`
+        // script += `        .period(1m)\n`
+        // script += `        .every(1s)\n`
         script += `    |alert()\n`
+        // script += `        .crit(lambda: "scene" == 'BlazeMeter')\n`
         script += `        .message('CPU usage over 90%')\n`
         script += `        .mqtt('alerts')\n`
         script += `          .brokerName('localhost')\n`
-        script += `          .qos(1)\n`
-        // script += `          .retained()\n`.trim()
+        script += `          .qos(1)\n`.trim()
 
         // var script = `stream\n`
         // script += `    |from()\n`
@@ -66,12 +69,12 @@ function RavisMonitorInfluxDB({host, port, username, password, database, callbac
         // script += `    |alert()\n`
         // script += `        .crit(lambda: "client" == 'BlazeMeter')\n`
         // script += `        .message('CPU usage over 90%')\n`
-        // script += `        .topic('${scope}')\n`
+        // script += `        .topic('alerts')\n`
 
         console.log("creating task", script)
         const response = await kapacitor.createTask({
             id: taskID,
-            type: "stream",
+            type: "batch",
             dbrps: [{ db: database, rp: "autogen" }],
             script,
             status: "enabled",
