@@ -50,31 +50,35 @@ function RavisMonitorInfluxDB({host, port, username, password, database, callbac
             await deleteTask()
         } 
 
-        var script = `stream\n`
-        script += `    |from()\n`
-        script += `        .measurement('${scope}')\n`
-        // script += `    |window()\n`
-        // script += `        .period(1m)\n`
-        // script += `        .every(1s)\n`
-        script += `    |alert()\n`
-        // script += `        .crit(lambda: "scene" == 'BlazeMeter')\n`
-        script += `        .message('CPU usage over 90%')\n`
-        script += `        .mqtt('alerts')\n`
-        script += `          .brokerName('localhost')\n`
-        script += `          .qos(1)\n`.trim()
+        var script = `stream`
+        script += `    |from()`
+        script += `        .measurement('cpu')`
+        // script += `    |window()`
+        // script += `        .period(10s)`
+        // script += `        .every(1s)`
+        // script += `    |log()`
+        // script += `        .prefix('Kapacitor stat =>')`
+        script += `    |alert()`
+        script += `        .crit(lambda: abs("value") > 1)`
+        script += `        .message('CPU usage over 90%')`
+        // script += `        .topic('Kapacitor')`
+        script += `        .mqtt('alerts')`
+        script += `          .brokerName('localhost')`
+        script += `          .qos(1)`
+        // script += `          .retained()`
 
-        // var script = `stream\n`
-        // script += `    |from()\n`
-        // script += `        .measurement('${scope}')\n`
-        // script += `    |alert()\n`
-        // script += `        .crit(lambda: "client" == 'BlazeMeter')\n`
-        // script += `        .message('CPU usage over 90%')\n`
-        // script += `        .topic('alerts')\n`
+        // var script = `stream`
+        // script += `    |from()`
+        // script += `        .measurement('${scope}')`
+        // script += `    |alert()`
+        // script += `        .crit(lambda: "client" == 'BlazeMeter')`
+        // script += `        .message('CPU usage over 90%')`
+        // script += `        .topic('alerts')`
 
         console.log("creating task", script)
         const response = await kapacitor.createTask({
             id: taskID,
-            type: "batch",
+            type: "stream",
             dbrps: [{ db: database, rp: "autogen" }],
             script,
             status: "enabled",
